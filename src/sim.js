@@ -1,4 +1,8 @@
-import { TEAMS, GROUPS, GROUP_KEYS, groupMatches } from './data.js'
+import {
+  TEAMS, GROUPS, GROUP_KEYS, groupMatches,
+  R32_SPEC, R16_SPEC, QF_SPEC, SF_SPEC, FINAL_SPEC
+} from './data.js'
+import { THIRD_PLACE_MATRIX } from './thirdMatrix.js'
 
 function poisson(lambda) {
   const L = Math.exp(-lambda)
@@ -9,7 +13,6 @@ function poisson(lambda) {
 
 function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)) }
 
-// Generate plausible scoreline from Elo diff (home perspective).
 function sampleScore(homeId, awayId) {
   const d = TEAMS[homeId].elo - TEAMS[awayId].elo
   const lh = clamp(1.45 + d / 220, 0.25, 4.2)
@@ -17,11 +20,9 @@ function sampleScore(homeId, awayId) {
   return [poisson(lh), poisson(la)]
 }
 
-// KO: replay until non-draw (mimic ET/pens) — but skew by Elo.
 function sampleKO(homeId, awayId) {
   let [h, a] = sampleScore(homeId, awayId)
   if (h !== a) return [h, a, h > a ? homeId : awayId]
-  // penalties → tilt by Elo
   const d = TEAMS[homeId].elo - TEAMS[awayId].elo
   const pHome = 1 / (1 + Math.pow(10, -d / 600))
   const winner = Math.random() < pHome ? homeId : awayId
@@ -57,41 +58,74 @@ export function allGroupStandings(results) {
   return out
 }
 
-// Determine 32 advancing teams in seeded order
-export function advancingTeams(standings) {
-  const top2 = []
+// Identify the 8 best third-place teams across the 12 groups.
+function bestThirds(standings) {
   const thirds = []
   GROUP_KEYS.forEach(k => {
     const s = standings[k]
-    if (s[0]) top2.push(s[0])
-    if (s[1]) top2.push(s[1])
-    if (s[2]) thirds.push(s[2])
+    if (s[2]) thirds.push({ group: k, ...s[2] })
   })
   thirds.sort((a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || (TEAMS[b.team].elo - TEAMS[a.team].elo))
-  const best8 = thirds.slice(0, 8)
-  const all = [...top2, ...best8]
-  // Seed by Pts/GD/GF/Elo
-  all.sort((a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || (TEAMS[b.team].elo - TEAMS[a.team].elo))
-  return all
+  return thirds.slice(0, 8)
 }
 
-// Build standard knockout bracket pairings from 32 seeds.
-// R32: 1-32, 16-17, 8-25, 9-24, 4-29, 13-20, 5-28, 12-21,
-//      2-31, 15-18, 7-26, 10-23, 3-30, 14-19, 6-27, 11-22
-const R32_PAIRS = [
-  [1, 32], [16, 17], [8, 25], [9, 24], [4, 29], [13, 20], [5, 28], [12, 21],
-  [2, 31], [15, 18], [7, 26], [10, 23], [3, 30], [14, 19], [6, 27], [11, 22]
-]
-
-export function buildBracketPairs(advancing) {
-  // advancing[0] is seed 1
-  return R32_PAIRS.map(([a, b]) => [advancing[a - 1]?.team, advancing[b - 1]?.team])
+// Resolve R32_SPEC into 16 concrete [homeTeamId, awayTeamId] pairs.
+// Uses standings + Annex C third-place matrix.
+export function resolveR32Pairs(standings) {
+  const thirds = bestThirds(standings)
+  if (thirds.length < 8) {
+    // Pre-tournament / incomplete: best-effort partial fill, no third-place mapping.
+    return R32_SPEC.map(spec => {
+      const teamFor = ref => {
+        if (ref.kind === 'winner') return standings[ref.group]?.[0]?.team
+        if (ref.kind === 'runnerup') return standings[ref.group]?.[1]?.team
+        return null // third unresolved
+      }
+      return [teamFor(spec.home), teamFor(spec.away)]
+    })
+  }
+  const groupsKey = thirds.map(t => t.group).sort().join('')
+  const assignment = THIRD_PLACE_MATRIX[groupsKey]
+  // Map of "1A" / "1B" / "1D" / "1E" / "1G" / "1I" / "1K" / "1L" → "3X"
+  // Header order in matrix: 1A, 1B, 1D, 1E, 1G, 1I, 1K, 1L
+  const headerSlots = ['1A', '1B', '1D', '1E', '1G', '1I', '1K', '1L']
+  const slotToThird = {}
+  if (assignment) {
+    headerSlots.forEach((slot, i) => { slotToThird[slot] = assignment[i] })
+  }
+  // R32 matches involving a third-placed team are those whose winner's group is in headerSlots.
+  return R32_SPEC.map(spec => {
+    const teamFor = (ref, otherRef) => {
+      if (ref.kind === 'winner') return standings[ref.group][0].team
+      if (ref.kind === 'runnerup') return standings[ref.group][1].team
+      if (ref.kind === 'third') {
+        // Identify slot via the OPPONENT (the group winner this 3rd team faces).
+        if (otherRef.kind === 'winner') {
+          const slot = `1${otherRef.group}`
+          const thirdLabel = slotToThird[slot] // e.g. "3E"
+          if (!thirdLabel) return null
+          const grp = thirdLabel[1]
+          return standings[grp]?.[2]?.team || null
+        }
+        return null
+      }
+      return null
+    }
+    return [teamFor(spec.home, spec.away), teamFor(spec.away, spec.home)]
+  })
 }
 
-// Simulate one full tournament given current results (treat empty matches as random)
+// Determine 32 advancing teams (for Probabilities/Advancing UI). Order: 12 winners, 12 runners-up, 8 best thirds.
+export function advancingTeams(standings) {
+  const list = []
+  GROUP_KEYS.forEach(k => { if (standings[k][0]) list.push(standings[k][0]) })
+  GROUP_KEYS.forEach(k => { if (standings[k][1]) list.push(standings[k][1]) })
+  bestThirds(standings).forEach(t => list.push(t))
+  return list
+}
+
 function simOnce(results) {
   const simResults = { ...results }
-  // Fill missing group matches
   GROUP_KEYS.forEach(k => {
     groupMatches(k).forEach(([h, a], idx) => {
       const key = `${k}-${idx}`
@@ -102,24 +136,50 @@ function simOnce(results) {
     })
   })
   const standings = allGroupStandings(simResults)
-  const advancing = advancingTeams(standings)
+  const r32Pairs = resolveR32Pairs(standings)
   const reached = {}
-  advancing.forEach(t => reached[t.team] = { r32: 1, r16: 0, qf: 0, sf: 0, final: 0, champ: 0 })
+  r32Pairs.forEach(([h, a]) => {
+    if (h) reached[h] = reached[h] || { r32: 1, r16: 0, qf: 0, sf: 0, final: 0, champ: 0 }
+    if (a) reached[a] = reached[a] || { r32: 1, r16: 0, qf: 0, sf: 0, final: 0, champ: 0 }
+  })
 
-  let round = buildBracketPairs(advancing).map(([h, a]) => sampleKO(h, a)[2])
-  // round is array of 16 winners → R16
-  round.forEach(w => reached[w].r16 = 1)
-  let r16 = []
-  for (let i = 0; i < round.length; i += 2) r16.push(sampleKO(round[i], round[i + 1])[2])
-  r16.forEach(w => reached[w].qf = 1)
-  let qf = []
-  for (let i = 0; i < r16.length; i += 2) qf.push(sampleKO(r16[i], r16[i + 1])[2])
-  qf.forEach(w => reached[w].sf = 1)
-  let sf = []
-  for (let i = 0; i < qf.length; i += 2) sf.push(sampleKO(qf[i], qf[i + 1])[2])
-  sf.forEach(w => reached[w].final = 1)
-  const champ = sampleKO(sf[0], sf[1])[2]
-  reached[champ].champ = 1
+  // R32 winners: 16 winners indexed by match number minus 73
+  const r32Winners = r32Pairs.map(([h, a]) => h && a ? sampleKO(h, a)[2] : null)
+
+  // R16 from R16_SPEC.feeds (match numbers → r32 winner indices)
+  const r16Winners = R16_SPEC.map(spec => {
+    const h = r32Winners[spec.feeds[0] - 73]
+    const a = r32Winners[spec.feeds[1] - 73]
+    if (h) reached[h].r16 = 1
+    if (a) reached[a].r16 = 1
+    if (!h || !a) return null
+    return sampleKO(h, a)[2]
+  })
+
+  const qfWinners = QF_SPEC.map(spec => {
+    const h = r16Winners[spec.feeds[0] - 89]
+    const a = r16Winners[spec.feeds[1] - 89]
+    if (h) reached[h].qf = 1
+    if (a) reached[a].qf = 1
+    if (!h || !a) return null
+    return sampleKO(h, a)[2]
+  })
+
+  const sfWinners = SF_SPEC.map(spec => {
+    const h = qfWinners[spec.feeds[0] - 97]
+    const a = qfWinners[spec.feeds[1] - 97]
+    if (h) reached[h].sf = 1
+    if (a) reached[a].sf = 1
+    if (!h || !a) return null
+    return sampleKO(h, a)[2]
+  })
+
+  if (sfWinners[0] && sfWinners[1]) {
+    reached[sfWinners[0]].final = 1
+    reached[sfWinners[1]].final = 1
+    const champ = sampleKO(sfWinners[0], sfWinners[1])[2]
+    reached[champ].champ = 1
+  }
   return reached
 }
 
@@ -144,12 +204,10 @@ export function runMonteCarlo(results, N = 2000) {
   return agg
 }
 
-// Compute deterministic bracket from user-entered scores (used for Bracket view)
+// Compute deterministic bracket from user-entered scores (used for Bracket view).
 export function computeBracket(results, koResults) {
   const standings = allGroupStandings(results)
-  const advancing = advancingTeams(standings)
-  const r32Pairs = buildBracketPairs(advancing)
-  // winnerOf only honors stored entry if it matches current pair (else stale).
+  const r32Pairs = resolveR32Pairs(standings)
   const winnerOf = (round, idx, expHome, expAway) => {
     if (!expHome || !expAway) return null
     const r = koResults[`${round}-${idx}`]
@@ -161,23 +219,15 @@ export function computeBracket(results, koResults) {
     if (r.penWinner === r.homeId || r.penWinner === r.awayId) return r.penWinner
     return TEAMS[r.homeId].elo >= TEAMS[r.awayId].elo ? r.homeId : r.awayId
   }
-  // Build round-by-round using winners of prior round as next pair members.
-  const buildNext = (prevPairs, prevRoundName) => {
-    const next = []
-    for (let i = 0; i < prevPairs.length; i += 2) {
-      const w1 = winnerOf(prevRoundName, i, prevPairs[i][0], prevPairs[i][1])
-      const w2 = winnerOf(prevRoundName, i + 1, prevPairs[i + 1][0], prevPairs[i + 1][1])
-      next.push([w1, w2])
-    }
-    return next
-  }
-  const r16Pairs = buildNext(r32Pairs, 'r32')
-  const qfPairs = buildNext(r16Pairs, 'r16')
-  const sfPairs = buildNext(qfPairs, 'qf')
-  const finalPair = [
-    winnerOf('sf', 0, sfPairs[0][0], sfPairs[0][1]),
-    winnerOf('sf', 1, sfPairs[1][0], sfPairs[1][1])
-  ]
+  const r32Winners = r32Pairs.map(([h, a], i) => winnerOf('r32', i, h, a))
+  const r16Pairs = R16_SPEC.map(spec => [r32Winners[spec.feeds[0] - 73], r32Winners[spec.feeds[1] - 73]])
+  const r16Winners = r16Pairs.map(([h, a], i) => winnerOf('r16', i, h, a))
+  const qfPairs = QF_SPEC.map(spec => [r16Winners[spec.feeds[0] - 89], r16Winners[spec.feeds[1] - 89]])
+  const qfWinners = qfPairs.map(([h, a], i) => winnerOf('qf', i, h, a))
+  const sfPairs = SF_SPEC.map(spec => [qfWinners[spec.feeds[0] - 97], qfWinners[spec.feeds[1] - 97]])
+  const sfWinners = sfPairs.map(([h, a], i) => winnerOf('sf', i, h, a))
+  const finalPair = [sfWinners[0], sfWinners[1]]
   const champ = winnerOf('final', 0, finalPair[0], finalPair[1])
+  const advancing = advancingTeams(standings)
   return { r32Pairs, r16Pairs, qfPairs, sfPairs, finalPair, champ, advancing, standings }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { TEAMS, GROUPS, GROUP_KEYS, groupMatches, groupSchedule, VENUES, KO_SCHEDULE } from './data.js'
+import { TEAMS, GROUPS, GROUP_KEYS, groupMatches, groupSchedule, VENUES, KO_SCHEDULE, allMatchesSequential } from './data.js'
 import { allGroupStandings, advancingTeams, computeBracket, runMonteCarlo } from './sim.js'
 import { EMPTY_STATE, loadAuth, saveAuth, fetchState, putState, verifyAuth } from './store.js'
 
@@ -69,7 +69,7 @@ function GroupsView({ results, setResults, mode = 'score' }) {
                 return (
                   <div key={key} style={{ paddingBottom: 8, borderBottom: '1px solid var(--line)', marginBottom: 8 }}>
                     <div className="matchmeta">
-                      <span>{fmtDate(date)}</span>
+                      <span><span className="muted small">M{m.match}</span> · {fmtDate(date)}</span>
                       <span className="muted">{city}{VENUES[city] ? ` · ${VENUES[city]}` : ''}</span>
                     </div>
                     <div className="match" style={{ border: 'none', padding: 0 }}>
@@ -97,6 +97,77 @@ function GroupsView({ results, setResults, mode = 'score' }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function ScheduleView({ results, ko }) {
+  const list = useMemo(() => allMatchesSequential(), [])
+  const [filter, setFilter] = useState('all') // 'all' | 'group' | 'ko'
+  const getScore = m => {
+    if (m.home && m.away) {
+      // group-stage; look up via per-group idx
+      const sched = groupSchedule(m.round.slice(-1))
+      const idx = sched.findIndex(s => s.match === m.match)
+      const r = results[`${m.round.slice(-1)}-${idx}`]
+      return r && r.home != null && r.away != null ? `${r.home}-${r.away}` : ''
+    }
+    // KO: koResults keyed by round-idx. Determine round + idx from match number.
+    const n = m.match
+    let round, idx
+    if (n >= 73 && n <= 88) { round = 'r32'; idx = n - 73 }
+    else if (n >= 89 && n <= 96) { round = 'r16'; idx = n - 89 }
+    else if (n >= 97 && n <= 100) { round = 'qf'; idx = n - 97 }
+    else if (n >= 101 && n <= 102) { round = 'sf'; idx = n - 101 }
+    else if (n === 104) { round = 'final'; idx = 0 }
+    else return ''
+    const r = ko[`${round}-${idx}`]
+    return r && r.home != null && r.away != null ? `${r.home}-${r.away}` : ''
+  }
+  const rows = list.filter(m => {
+    if (filter === 'group') return m.match <= 72
+    if (filter === 'ko') return m.match > 72
+    return true
+  })
+  return (
+    <div>
+      <div className="actions">
+        <button className={filter === 'all' ? 'primary' : ''} onClick={() => setFilter('all')}>All ({list.length})</button>
+        <button className={filter === 'group' ? 'primary' : ''} onClick={() => setFilter('group')}>Group (72)</button>
+        <button className={filter === 'ko' ? 'primary' : ''} onClick={() => setFilter('ko')}>Knockout (32)</button>
+      </div>
+      <div className="card" style={{ overflowX: 'auto' }}>
+        <table className="standings" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left' }}>#</th>
+              <th style={{ textAlign: 'left' }}>Date</th>
+              <th style={{ textAlign: 'left' }}>Round</th>
+              <th style={{ textAlign: 'right' }}>Home</th>
+              <th>Score</th>
+              <th style={{ textAlign: 'left' }}>Away</th>
+              <th style={{ textAlign: 'left' }}>Venue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(m => (
+              <tr key={m.match}>
+                <td><b>M{m.match}</b></td>
+                <td>{fmtDate(m.date)}</td>
+                <td className="muted small">{m.round}</td>
+                <td style={{ textAlign: 'right' }}>
+                  {m.home ? <TeamLabel id={m.home} /> : <span className="muted small">{m.homeLabel}</span>}
+                </td>
+                <td style={{ textAlign: 'center', fontFamily: 'monospace' }}>{getScore(m) || '—'}</td>
+                <td>
+                  {m.away ? <TeamLabel id={m.away} /> : <span className="muted small">{m.awayLabel}</span>}
+                </td>
+                <td className="muted small">{m.city}{VENUES[m.city] ? ` · ${VENUES[m.city]}` : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -131,13 +202,13 @@ function KoMatch({ round, idx, homeId, awayId, ko, setKo, allowQuickPick, densit
     <div className="koMatch">
       {showMeta && meta && (
         <div className="matchmeta" style={{ marginBottom: 6 }}>
-          <span>{fmtDate(meta.date)}</span>
+          <span>{meta.match ? <><span className="muted small">M{meta.match}</span> · </> : null}{fmtDate(meta.date)}</span>
           <span className="muted">{meta.city}{showStadium && VENUES[meta.city] ? ` · ${VENUES[meta.city]}` : ''}</span>
         </div>
       )}
       {!showMeta && meta && (
         <div className="matchmeta" style={{ marginBottom: 4, justifyContent: 'center' }}>
-          <span>{fmtDate(meta.date)}</span>
+          <span>{meta.match ? <><span className="muted small">M{meta.match}</span> · </> : null}{fmtDate(meta.date)}</span>
         </div>
       )}
       <div className={`row ${homeCls}`}>
@@ -641,6 +712,7 @@ export default function App() {
           <nav className="tabs sub">
             <button className={resultsSub === 'groups' ? 'active' : ''} onClick={() => setResultsSub('groups')}>Groups</button>
             <button className={resultsSub === 'bracket' ? 'active' : ''} onClick={() => setResultsSub('bracket')}>Bracket</button>
+            <button className={resultsSub === 'schedule' ? 'active' : ''} onClick={() => setResultsSub('schedule')}>All Matches</button>
           </nav>
           {resultsSub === 'groups' && (
             <>
@@ -659,6 +731,9 @@ export default function App() {
               allowQuickPick={true}
               blurb="Bracket fills as actual Groups results are entered. Click ✓ to advance via knockout."
             />
+          )}
+          {resultsSub === 'schedule' && (
+            <ScheduleView results={state.results} ko={state.ko} />
           )}
         </>
       )}

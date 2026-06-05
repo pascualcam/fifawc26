@@ -176,6 +176,24 @@ export const SCHEDULE = [
   { group: 'L', home: 'CRO', away: 'GHA', date: '2026-06-27', city: 'Philadelphia' }
 ]
 
+// Assign official FIFA match numbers M1-M72 to each group-stage match.
+// Order verified against ESPN/SI/Wikipedia chronological lists. Index = SCHEDULE position.
+const GROUP_MATCH_NUMBERS = [
+  1, 2, 25, 28, 49, 50,    // A
+  3, 6, 26, 27, 51, 52,    // B
+  7, 8, 31, 32, 53, 54,    // C
+  4, 5, 30, 29, 55, 56,    // D
+  9, 11, 33, 34, 57, 58,   // E
+  10, 12, 35, 36, 59, 60,  // F
+  14, 16, 37, 38, 61, 62,  // G
+  13, 15, 39, 40, 63, 64,  // H
+  17, 18, 41, 42, 65, 66,  // I
+  19, 20, 43, 44, 67, 68,  // J
+  21, 24, 45, 46, 69, 70,  // K
+  22, 23, 47, 48, 71, 72   // L
+]
+SCHEDULE.forEach((m, i) => { m.match = GROUP_MATCH_NUMBERS[i] })
+
 export function groupMatches(groupKey) {
   return SCHEDULE.filter(m => m.group === groupKey).map(m => [m.home, m.away])
 }
@@ -186,48 +204,106 @@ export function groupSchedule(groupKey) {
 
 export const GROUP_KEYS = Object.keys(GROUPS)
 
-// Knockout schedule (per ESPN/FIFA). Indices align with bracket arrays in sim.js.
-// Sequential mapping — actual seed-to-match assignment by FIFA not used here.
+// Official FIFA Round of 32 bracket spec (per Wikipedia/FIFA tournament regs).
+// Each entry: match number, home/away as group-position references.
+// pos refs: { kind: 'winner'|'runnerup', group: 'A' } or { kind: 'third', from: [groups] }.
+// The 'from' array names the 5 candidate groups; the actual 3rd-placed team
+// assigned depends on the 495-row Annex C lookup (THIRD_PLACE_MATRIX).
+export const R32_SPEC = [
+  { match: 73, date: '2026-06-28', city: 'Inglewood',       home: { kind: 'runnerup', group: 'A' }, away: { kind: 'runnerup', group: 'B' } },
+  { match: 74, date: '2026-06-29', city: 'Foxborough',      home: { kind: 'winner',   group: 'E' }, away: { kind: 'third', from: ['A','B','C','D','F'] } },
+  { match: 75, date: '2026-06-29', city: 'Guadalupe',       home: { kind: 'winner',   group: 'F' }, away: { kind: 'runnerup', group: 'C' } },
+  { match: 76, date: '2026-06-29', city: 'Houston',         home: { kind: 'winner',   group: 'C' }, away: { kind: 'runnerup', group: 'F' } },
+  { match: 77, date: '2026-06-30', city: 'East Rutherford', home: { kind: 'winner',   group: 'I' }, away: { kind: 'third', from: ['C','D','F','G','H'] } },
+  { match: 78, date: '2026-06-30', city: 'Arlington',       home: { kind: 'runnerup', group: 'E' }, away: { kind: 'runnerup', group: 'I' } },
+  { match: 79, date: '2026-06-30', city: 'Mexico City',     home: { kind: 'winner',   group: 'A' }, away: { kind: 'third', from: ['C','E','F','H','I'] } },
+  { match: 80, date: '2026-07-01', city: 'Atlanta',         home: { kind: 'winner',   group: 'L' }, away: { kind: 'third', from: ['E','H','I','J','K'] } },
+  { match: 81, date: '2026-07-01', city: 'Santa Clara',     home: { kind: 'winner',   group: 'D' }, away: { kind: 'third', from: ['B','E','F','I','J'] } },
+  { match: 82, date: '2026-07-01', city: 'Seattle',         home: { kind: 'winner',   group: 'G' }, away: { kind: 'third', from: ['A','E','H','I','J'] } },
+  { match: 83, date: '2026-07-02', city: 'Toronto',         home: { kind: 'runnerup', group: 'K' }, away: { kind: 'runnerup', group: 'L' } },
+  { match: 84, date: '2026-07-02', city: 'Inglewood',       home: { kind: 'winner',   group: 'H' }, away: { kind: 'runnerup', group: 'J' } },
+  { match: 85, date: '2026-07-02', city: 'Vancouver',       home: { kind: 'winner',   group: 'B' }, away: { kind: 'third', from: ['E','F','G','I','J'] } },
+  { match: 86, date: '2026-07-03', city: 'Miami Gardens',   home: { kind: 'winner',   group: 'J' }, away: { kind: 'runnerup', group: 'H' } },
+  { match: 87, date: '2026-07-03', city: 'Kansas City',     home: { kind: 'winner',   group: 'K' }, away: { kind: 'third', from: ['D','E','I','J','L'] } },
+  { match: 88, date: '2026-07-03', city: 'Arlington',       home: { kind: 'runnerup', group: 'D' }, away: { kind: 'runnerup', group: 'G' } }
+]
+
+// R16-Final bracket flow per Wikipedia/FIFA: each entry refs winners of prior matches.
+// Indices reference R32_SPEC (0-based, so r32idx = matchNum - 73).
+export const R16_SPEC = [
+  { match: 89, date: '2026-07-04', city: 'Philadelphia',    feeds: [74, 77] },
+  { match: 90, date: '2026-07-04', city: 'Houston',         feeds: [73, 75] },
+  { match: 91, date: '2026-07-05', city: 'East Rutherford', feeds: [76, 78] },
+  { match: 92, date: '2026-07-05', city: 'Mexico City',     feeds: [79, 80] },
+  { match: 93, date: '2026-07-06', city: 'Arlington',       feeds: [83, 84] },
+  { match: 94, date: '2026-07-06', city: 'Seattle',         feeds: [81, 82] },
+  { match: 95, date: '2026-07-07', city: 'Atlanta',         feeds: [86, 88] },
+  { match: 96, date: '2026-07-07', city: 'Vancouver',       feeds: [85, 87] }
+]
+
+export const QF_SPEC = [
+  { match: 97,  date: '2026-07-09', city: 'Foxborough',    feeds: [89, 90] },
+  { match: 98,  date: '2026-07-10', city: 'Inglewood',     feeds: [91, 92] },
+  { match: 99,  date: '2026-07-11', city: 'Miami Gardens', feeds: [93, 94] },
+  { match: 100, date: '2026-07-11', city: 'Kansas City',   feeds: [95, 96] }
+]
+
+export const SF_SPEC = [
+  { match: 101, date: '2026-07-14', city: 'Arlington', feeds: [97, 98] },
+  { match: 102, date: '2026-07-15', city: 'Atlanta',   feeds: [99, 100] }
+]
+
+export const THIRD_PLACE_SPEC =
+  { match: 103, date: '2026-07-18', city: 'Miami Gardens', feeds: [101, 102], loserBracket: true }
+
+export const FINAL_SPEC =
+  { match: 104, date: '2026-07-19', city: 'East Rutherford', feeds: [101, 102] }
+
+// Legacy alias preserved for components still indexing 0..15 / 0..7 etc.
 export const KO_SCHEDULE = {
-  r32: [
-    { date: '2026-06-28', city: 'Inglewood' },
-    { date: '2026-06-29', city: 'Houston' },
-    { date: '2026-06-29', city: 'Foxborough' },
-    { date: '2026-06-29', city: 'Guadalupe' },
-    { date: '2026-06-30', city: 'Arlington' },
-    { date: '2026-06-30', city: 'East Rutherford' },
-    { date: '2026-06-30', city: 'Mexico City' },
-    { date: '2026-07-01', city: 'Atlanta' },
-    { date: '2026-07-01', city: 'Seattle' },
-    { date: '2026-07-01', city: 'Santa Clara' },
-    { date: '2026-07-02', city: 'Inglewood' },
-    { date: '2026-07-02', city: 'Toronto' },
-    { date: '2026-07-02', city: 'Vancouver' },
-    { date: '2026-07-03', city: 'Arlington' },
-    { date: '2026-07-03', city: 'Miami Gardens' },
-    { date: '2026-07-03', city: 'Kansas City' }
-  ],
-  r16: [
-    { date: '2026-07-04', city: 'Houston' },
-    { date: '2026-07-04', city: 'Philadelphia' },
-    { date: '2026-07-05', city: 'East Rutherford' },
-    { date: '2026-07-05', city: 'Mexico City' },
-    { date: '2026-07-06', city: 'Arlington' },
-    { date: '2026-07-06', city: 'Seattle' },
-    { date: '2026-07-07', city: 'Atlanta' },
-    { date: '2026-07-07', city: 'Vancouver' }
-  ],
-  qf: [
-    { date: '2026-07-09', city: 'Foxborough' },
-    { date: '2026-07-10', city: 'Inglewood' },
-    { date: '2026-07-11', city: 'Miami Gardens' },
-    { date: '2026-07-11', city: 'Kansas City' }
-  ],
-  sf: [
-    { date: '2026-07-14', city: 'Arlington' },
-    { date: '2026-07-15', city: 'Atlanta' }
-  ],
-  final: [
-    { date: '2026-07-19', city: 'East Rutherford' }
-  ]
+  r32:   R32_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
+  r16:   R16_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
+  qf:    QF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
+  sf:    SF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
+  final: [{ date: FINAL_SPEC.date, city: FINAL_SPEC.city, match: FINAL_SPEC.match }]
+}
+
+// Build a flat M1..M104 sequential list. Knockout entries have symbolic home/away
+// strings (e.g. "Winner Group A", "Runner-up Group B", "3rd from C/D/F/G/H", "Winner M73").
+export function allMatchesSequential() {
+  const list = []
+  SCHEDULE.forEach(m => {
+    list.push({
+      match: m.match,
+      round: 'Group ' + m.group,
+      date: m.date,
+      city: m.city,
+      home: m.home,
+      away: m.away
+    })
+  })
+  const refLabel = (ref) => {
+    if (ref.kind === 'winner') return `Winner Group ${ref.group}`
+    if (ref.kind === 'runnerup') return `Runner-up Group ${ref.group}`
+    if (ref.kind === 'third') return `3rd from ${ref.from.join('/')}`
+    return '?'
+  }
+  R32_SPEC.forEach(s => list.push({
+    match: s.match, round: 'R32', date: s.date, city: s.city,
+    homeLabel: refLabel(s.home), awayLabel: refLabel(s.away)
+  }))
+  ;[...R16_SPEC, ...QF_SPEC, ...SF_SPEC, THIRD_PLACE_SPEC, FINAL_SPEC].forEach(s => {
+    const round = s.match >= 104 ? 'Final'
+      : s.match === 103 ? '3rd-place'
+      : s.match >= 101 ? 'Semifinal'
+      : s.match >= 97 ? 'Quarterfinal'
+      : 'R16'
+    list.push({
+      match: s.match, round, date: s.date, city: s.city,
+      homeLabel: `Winner M${s.feeds[0]}`,
+      awayLabel: s.loserBracket ? `Loser M${s.feeds[0]}` : `Winner M${s.feeds[1]}`,
+      ...(s.loserBracket ? { homeLabel: `Loser M${s.feeds[0]}`, awayLabel: `Loser M${s.feeds[1]}` } : {})
+    })
+  })
+  return list.sort((a, b) => a.match - b.match)
 }
