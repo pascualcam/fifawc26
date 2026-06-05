@@ -395,7 +395,7 @@ function Probabilities({ results }) {
   )
 }
 
-function Expectations({ state, setState }) {
+function Expectations({ state, setState, saveStatus, doSave }) {
   const [sub, setSub] = useState('groups') // 'groups' | 'bracket'
   const setExpectResults = r => setState({ ...state, expect: { ...state.expect, results: r } })
   const setExpectKo = k => setState({ ...state, expect: { ...state.expect, ko: k } })
@@ -406,9 +406,9 @@ function Expectations({ state, setState }) {
   }).length
   return (
     <div>
-      <div className="small muted" style={{ marginBottom: 12 }}>
-       Enter your predictions to simulate your bracket.
-      </div>
+      <TabBar saveStatus={saveStatus} doSave={doSave}>
+        <span className="small muted">Enter your predictions to simulate your bracket.</span>
+      </TabBar>
       <div className="actions">
         <button className={sub === 'groups' ? 'primary' : ''} onClick={() => setSub('groups')}>Group picks ({groupDone}/72)</button>
         <button className={sub === 'bracket' ? 'primary' : ''} onClick={() => setSub('bracket')}>My bracket{b.champ ? ` · 🏆 ${TEAMS[b.champ].flag}` : ''}</button>
@@ -448,31 +448,29 @@ function Advancing({ results }) {
 
 function SaveControl({ status, onSave }) {
   const label = {
-    idle: 'Saved',
-    dirty: 'Save',
+    idle: '✓ Saved',
+    dirty: 'Save progress',
     saving: 'Saving…',
     saved: '✓ Saved',
-    error: '✗ Retry'
+    error: '✗ Retry save'
   }[status]
-  const color = status === 'error' ? 'var(--bad)' : status === 'saved' ? 'var(--good)' : status === 'dirty' ? 'var(--fg)' : 'var(--muted)'
   const disabled = status === 'idle' || status === 'saving' || status === 'saved'
   return (
     <button onClick={onSave} disabled={disabled}
-      style={{
-        background: status === 'dirty' || status === 'error' ? 'var(--card)' : 'transparent',
-        border: '1px solid var(--line)',
-        padding: '2px 10px',
-        borderRadius: 4,
-        fontSize: 11,
-        cursor: disabled ? 'default' : 'pointer',
-        color,
-        fontFamily: 'inherit',
-        fontWeight: status === 'dirty' ? 600 : 400
-      }}
-      title={status === 'dirty' ? 'Unsaved changes — click to save now (auto-saves in 8s)' : ''}
+      className={`save-btn save-${status}`}
+      title={status === 'dirty' ? 'Unsaved changes — click to save now (auto-saves in 8s)' : status === 'error' ? 'Last save failed — click to retry' : 'All changes saved'}
     >
       {label}
     </button>
+  )
+}
+
+function TabBar({ children, saveStatus, doSave }) {
+  return (
+    <div className="tab-bar">
+      <div className="tab-bar-left">{children}</div>
+      <SaveControl status={saveStatus} onSave={doSave} />
+    </div>
   )
 }
 
@@ -513,9 +511,6 @@ function Login({ onLogin }) {
           style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, marginTop: 4 }}>
           {busy ? 'Checking…' : 'Sign in'}
         </button>
-        <div className="small muted" style={{ marginTop: 6, textAlign: 'center' }}>
-          State is stored per-name. Ask Pascual for the passcode.
-        </div>
       </form>
     </div>
   )
@@ -627,7 +622,6 @@ export default function App() {
           <span>🇺🇸 🇨🇦 🇲🇽 · 48 teams</span>
           <span>·</span>
           <span>{auth.name}</span>
-          <SaveControl status={saveStatus} onSave={doSave} />
           <button onClick={signOut}
             style={{ background: 'none', border: '1px solid var(--line)', padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer', color: 'var(--muted)', fontFamily: 'inherit' }}>
             Sign out
@@ -641,9 +635,9 @@ export default function App() {
       </nav>
       {tab === 'results' && (
         <>
-          <div className="small muted" style={{ marginBottom: 24 }}>
-            Enter actual game results here as matches are played. For your own picks, use the My Predictions tab.
-          </div>
+          <TabBar saveStatus={saveStatus} doSave={doSave}>
+            <span className="small muted">Enter actual game results here as matches are played. For your own picks, use the My Predictions tab.</span>
+          </TabBar>
           <nav className="tabs sub">
             <button className={resultsSub === 'groups' ? 'active' : ''} onClick={() => setResultsSub('groups')}>Groups</button>
             <button className={resultsSub === 'bracket' ? 'active' : ''} onClick={() => setResultsSub('bracket')}>Bracket</button>
@@ -669,7 +663,7 @@ export default function App() {
         </>
       )}
       {tab === 'probs' && <Probabilities results={state.results} />}
-      {tab === 'predict' && <Expectations state={state} setState={setState} />}
+      {tab === 'predict' && <Expectations state={state} setState={setState} saveStatus={saveStatus} doSave={doSave} />}
     </div>
   )
 }

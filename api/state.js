@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL)
+if (!process.env.DATABASE_URL) {
+  console.error('[api/state] DATABASE_URL is missing. .env.local not loaded or value empty.')
+}
+const sql = neon(process.env.DATABASE_URL || 'postgresql://placeholder@localhost/none')
 
 function slugify(name) {
   return String(name || '').trim().toLowerCase()
