@@ -9,13 +9,30 @@ function slugify(name) {
     .slice(0, 64)
 }
 
+// USER_PASSCODES env var: comma-separated "name:passcode" pairs, names case-insensitive.
+//   Example: "pascual:abc123,alice:xyz789,bob:hunter2"
+// Fallback: shared APP_PASSCODE applies to any name.
+function parseUsers() {
+  const raw = process.env.USER_PASSCODES || ''
+  const map = {}
+  for (const pair of raw.split(',')) {
+    const [name, pass] = pair.split(':').map(s => s && s.trim())
+    if (name && pass) map[slugify(name)] = pass
+  }
+  return map
+}
+
 function auth(req) {
   const passcode = req.headers['x-passcode']
   const userRaw = req.headers['x-user']
-  if (!passcode || passcode !== process.env.APP_PASSCODE) return null
   const userId = slugify(userRaw)
-  if (!userId) return null
-  return userId
+  if (!userId || !passcode) return null
+  const users = parseUsers()
+  if (Object.keys(users).length > 0) {
+    return users[userId] === passcode ? userId : null
+  }
+  // Fallback: shared passcode
+  return passcode === process.env.APP_PASSCODE ? userId : null
 }
 
 export default async function handler(req, res) {

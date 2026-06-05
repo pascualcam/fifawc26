@@ -446,6 +446,36 @@ function Advancing({ results }) {
   )
 }
 
+function SaveControl({ status, onSave }) {
+  const label = {
+    idle: 'Saved',
+    dirty: 'Save',
+    saving: 'Saving…',
+    saved: '✓ Saved',
+    error: '✗ Retry'
+  }[status]
+  const color = status === 'error' ? 'var(--bad)' : status === 'saved' ? 'var(--good)' : status === 'dirty' ? 'var(--fg)' : 'var(--muted)'
+  const disabled = status === 'idle' || status === 'saving' || status === 'saved'
+  return (
+    <button onClick={onSave} disabled={disabled}
+      style={{
+        background: status === 'dirty' || status === 'error' ? 'var(--card)' : 'transparent',
+        border: '1px solid var(--line)',
+        padding: '2px 10px',
+        borderRadius: 4,
+        fontSize: 11,
+        cursor: disabled ? 'default' : 'pointer',
+        color,
+        fontFamily: 'inherit',
+        fontWeight: status === 'dirty' ? 600 : 400
+      }}
+      title={status === 'dirty' ? 'Unsaved changes — click to save now (auto-saves in 8s)' : ''}
+    >
+      {label}
+    </button>
+  )
+}
+
 function Login({ onLogin }) {
   const [name, setName] = useState('')
   const [passcode, setPasscode] = useState('')
@@ -497,8 +527,22 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('results')
   const [resultsSub, setResultsSub] = useState('groups')
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
   const skipNextSave = useRef(true)
   const saveTimer = useRef(null)
+
+  const doSave = async () => {
+    if (!auth) return
+    setSaveStatus('saving')
+    try {
+      await putState(auth, state)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2000)
+    } catch (err) {
+      console.error('save failed', err)
+      setSaveStatus('error')
+    }
+  }
 
   // Load state on auth change
   useEffect(() => {
@@ -520,16 +564,23 @@ export default function App() {
     return () => { cancelled = true }
   }, [auth])
 
-  // Debounced save
+  // Debounced auto-save (safety net) — long delay since manual Save is primary.
   useEffect(() => {
     if (!auth || loading) return
     if (skipNextSave.current) { skipNextSave.current = false; return }
+    setSaveStatus('dirty')
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      putState(auth, state).catch(err => console.error('save failed', err))
-    }, 600)
+    saveTimer.current = setTimeout(() => { doSave() }, 8000)
     return () => clearTimeout(saveTimer.current)
   }, [state, auth, loading])
+
+  // Warn on tab close if unsaved.
+  useEffect(() => {
+    if (saveStatus !== 'dirty' && saveStatus !== 'saving') return
+    const handler = e => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [saveStatus])
 
   if (!auth) return <Login onLogin={setAuth} />
   if (loading) return <div className="app"><div className="muted">Loading…</div></div>
@@ -576,6 +627,7 @@ export default function App() {
           <span>🇺🇸 🇨🇦 🇲🇽 · 48 teams</span>
           <span>·</span>
           <span>{auth.name}</span>
+          <SaveControl status={saveStatus} onSave={doSave} />
           <button onClick={signOut}
             style={{ background: 'none', border: '1px solid var(--line)', padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer', color: 'var(--muted)', fontFamily: 'inherit' }}>
             Sign out
