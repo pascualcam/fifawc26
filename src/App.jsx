@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { TEAMS, GROUPS, GROUP_KEYS, groupMatches, groupSchedule, VENUES, KO_SCHEDULE } from './data.js'
 import { allGroupStandings, advancingTeams, computeBracket, runMonteCarlo } from './sim.js'
-
-const STORE_KEY = 'fifawc26-v3'
+import { EMPTY_STATE, loadAuth, saveAuth, fetchState, putState, verifyAuth } from './store.js'
 
 const DATE_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 function fmtDate(iso) {
@@ -10,17 +9,6 @@ function fmtDate(iso) {
   const [y, m, d] = iso.split('-').map(Number)
   return DATE_FMT.format(new Date(y, m - 1, d))
 }
-
-const EMPTY_EXPECT = { results: {}, ko: {} }
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY)
-    if (!raw) return { results: {}, ko: {}, expect: { ...EMPTY_EXPECT } }
-    const s = JSON.parse(raw)
-    return { results: {}, ko: {}, expect: { ...EMPTY_EXPECT }, ...s, expect: { ...EMPTY_EXPECT, ...(s.expect || {}) } }
-  } catch { return { results: {}, ko: {}, expect: { ...EMPTY_EXPECT } } }
-}
-function saveState(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)) }
 
 function TeamLabel({ id, mute, hideName }) {
   if (!id) return <span className="muted small">— TBD —</span>
@@ -458,12 +446,95 @@ function Advancing({ results }) {
   )
 }
 
+function Login({ onLogin }) {
+  const [name, setName] = useState('')
+  const [passcode, setPasscode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const submit = async e => {
+    e.preventDefault()
+    setErr(null)
+    setBusy(true)
+    const auth = { name: name.trim(), passcode: passcode.trim() }
+    const ok = await verifyAuth(auth)
+    setBusy(false)
+    if (!ok) { setErr('Invalid name or passcode.'); return }
+    saveAuth(auth)
+    onLogin(auth)
+  }
+  return (
+    <div className="app" style={{ maxWidth: 380, marginTop: 80 }}>
+      <header className="top" style={{ display: 'block', textAlign: 'center', borderBottom: 'none' }}>
+        <h1 style={{ fontSize: 22 }}>FIFA World Cup 2026</h1>
+        <div className="sub" style={{ marginTop: 4 }}>🇺🇸 🇨🇦 🇲🇽 · Tracker</div>
+      </header>
+      <form onSubmit={submit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+        <h3>Sign in</h3>
+        <label className="small muted">Your name
+          <input value={name} onChange={e => setName(e.target.value)} required autoFocus
+            style={{ width: '100%', padding: 8, border: '1px solid var(--line)', borderRadius: 6, marginTop: 4, fontFamily: 'inherit', fontSize: 14 }} />
+        </label>
+        <label className="small muted">Passcode
+          <input type="password" value={passcode} onChange={e => setPasscode(e.target.value)} required
+            style={{ width: '100%', padding: 8, border: '1px solid var(--line)', borderRadius: 6, marginTop: 4, fontFamily: 'inherit', fontSize: 14 }} />
+        </label>
+        {err && <div className="small" style={{ color: 'var(--bad)' }}>{err}</div>}
+        <button type="submit" className="primary" disabled={busy}
+          style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, marginTop: 4 }}>
+          {busy ? 'Checking…' : 'Sign in'}
+        </button>
+        <div className="small muted" style={{ marginTop: 6, textAlign: 'center' }}>
+          State is stored per-name. Ask Pascual for the passcode.
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function App() {
-  const [state, setState] = useState(loadState)
+  const [auth, setAuth] = useState(loadAuth)
+  const [state, setState] = useState(EMPTY_STATE)
+  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('results')
   const [resultsSub, setResultsSub] = useState('groups')
+  const skipNextSave = useRef(true)
+  const saveTimer = useRef(null)
 
-  useEffect(() => { saveState(state) }, [state])
+  // Load state on auth change
+  useEffect(() => {
+    if (!auth) { setLoading(false); return }
+    let cancelled = false
+    setLoading(true)
+    fetchState(auth).then(s => {
+      if (cancelled) return
+      skipNextSave.current = true
+      setState(s)
+      setLoading(false)
+    }).catch(() => {
+      if (cancelled) return
+      // Auth failed — clear and re-prompt
+      saveAuth(null)
+      setAuth(null)
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [auth])
+
+  // Debounced save
+  useEffect(() => {
+    if (!auth || loading) return
+    if (skipNextSave.current) { skipNextSave.current = false; return }
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      putState(auth, state).catch(err => console.error('save failed', err))
+    }, 600)
+    return () => clearTimeout(saveTimer.current)
+  }, [state, auth, loading])
+
+  if (!auth) return <Login onLogin={setAuth} />
+  if (loading) return <div className="app"><div className="muted">Loading…</div></div>
+
+  const signOut = () => { saveAuth(null); setAuth(null); setState(EMPTY_STATE) }
 
   const resetAll = () => {
     if (confirm('Reset actual results & bracket? (Expectations untouched)')) {
@@ -501,7 +572,15 @@ export default function App() {
     <div className="app">
       <header className="top">
         <h1>FIFA World Cup 2026</h1>
-        <span className="sub">🇺🇸 🇨🇦 🇲🇽 · 48 teams · 12 groups</span>
+        <span className="sub" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>🇺🇸 🇨🇦 🇲🇽 · 48 teams</span>
+          <span>·</span>
+          <span>{auth.name}</span>
+          <button onClick={signOut}
+            style={{ background: 'none', border: '1px solid var(--line)', padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer', color: 'var(--muted)', fontFamily: 'inherit' }}>
+            Sign out
+          </button>
+        </span>
       </header>
       <nav className="tabs">
         <button className={tab === 'results' ? 'active' : ''} onClick={() => setTab('results')}>Results</button>
