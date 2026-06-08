@@ -685,7 +685,7 @@ export default function App() {
   }
 
   const autoFill = () => {
-    if (!confirm('Auto-fill all actual group results with Elo-based simulation?')) return
+    if (!confirm('Auto-fill all actual group results with simulation?')) return
     const next = { ...state.results }
     GROUP_KEYS.forEach(k => {
       groupMatches(k).forEach(([h, a], idx) => {
@@ -742,8 +742,8 @@ export default function App() {
           {resultsSub === 'groups' && (
             <>
               <div className="actions">
-                <button onClick={autoFill}>Auto-fill actual results</button>
-                <button onClick={resetAll}>Reset actual</button>
+                <button onClick={autoFill}>Auto-fill with simulation</button>
+                <button onClick={resetAll}>Reset</button>
               </div>
               <GroupsView results={state.results} setResults={setResults} mode="score" />
             </>
