@@ -487,7 +487,7 @@ function Probabilities({ results }) {
           <option value={10000}>10,000</option>
         </select>
         <span className="small muted" style={{ alignSelf: 'center' }}>
-          Sim respects entered Groups results; unplayed matches randomized via Elo.
+          Sim respects entered Groups results; unplayed matches randomized via simulation.
         </span>
       </div>
       {!rows && <div className="muted">Run simulation to see win probabilities.</div>}
