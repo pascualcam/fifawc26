@@ -178,19 +178,21 @@ export const SCHEDULE = [
 
 // Assign official FIFA match numbers M1-M72 to each group-stage match.
 // Order verified against ESPN/SI/Wikipedia chronological lists. Index = SCHEDULE position.
+// Numbers extracted from the official FIFA "FWC26 Match Schedule" PDF (10 Apr 2026).
+// SCHEDULE index order per group is fixed above — these are the M#s for those rows.
 const GROUP_MATCH_NUMBERS = [
-  1, 2, 25, 28, 49, 50,    // A
-  3, 6, 26, 27, 51, 52,    // B
-  7, 8, 31, 32, 53, 54,    // C
-  4, 5, 30, 29, 55, 56,    // D
-  9, 11, 33, 34, 57, 58,   // E
-  10, 12, 35, 36, 59, 60,  // F
-  14, 16, 37, 38, 61, 62,  // G
-  13, 15, 39, 40, 63, 64,  // H
-  17, 18, 41, 42, 65, 66,  // I
-  19, 20, 43, 44, 67, 68,  // J
-  21, 24, 45, 46, 69, 70,  // K
-  22, 23, 47, 48, 71, 72   // L
+  1,  2,  25, 28, 53, 54,  // A: MEX-RSA, KOR-CZE, CZE-RSA, MEX-KOR, CZE-MEX, RSA-KOR
+  3,  8,  26, 27, 51, 52,  // B: CAN-BIH, QAT-SUI, SUI-BIH, CAN-QAT, SUI-CAN, BIH-QAT
+  7,  5,  30, 29, 49, 50,  // C: BRA-MAR, HAI-SCO, SCO-MAR, BRA-HAI, SCO-BRA, MAR-HAI
+  4,  6,  32, 31, 59, 60,  // D: USA-PAR, AUS-TUR, USA-AUS, TUR-PAR, TUR-USA, PAR-AUS
+  10, 9,  33, 34, 56, 55,  // E: GER-CUW, CIV-ECU, GER-CIV, ECU-CUW, ECU-GER, CUW-CIV
+  11, 12, 35, 36, 57, 58,  // F: NED-JPN, SWE-TUN, NED-SWE, TUN-JPN, JPN-SWE, TUN-NED
+  16, 15, 39, 40, 63, 64,  // G: BEL-EGY, IRN-NZL, BEL-IRN, NZL-EGY, EGY-IRN, NZL-BEL
+  14, 13, 38, 37, 65, 66,  // H: ESP-CPV, KSA-URU, ESP-KSA, URU-CPV, CPV-KSA, URU-ESP
+  17, 18, 42, 41, 61, 62,  // I: FRA-SEN, IRQ-NOR, FRA-IRQ, NOR-SEN, NOR-FRA, SEN-IRQ
+  19, 20, 43, 44, 69, 70,  // J: ARG-ALG, AUT-JOR, ARG-AUT, JOR-ALG, ALG-AUT, JOR-ARG
+  23, 24, 47, 48, 71, 72,  // K: POR-COD, UZB-COL, POR-UZB, COL-COD, COL-POR, COD-UZB
+  22, 21, 45, 46, 67, 68   // L: ENG-CRO, GHA-PAN, ENG-GHA, PAN-CRO, PAN-ENG, CRO-GHA
 ]
 SCHEDULE.forEach((m, i) => { m.match = GROUP_MATCH_NUMBERS[i] })
 
