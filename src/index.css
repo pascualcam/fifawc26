@@ -413,9 +413,15 @@ table.standings tr:last-child td { border-bottom: none; }
 .round {
   display: flex;
   flex-direction: column;
+  min-width: 168px;
+}
+.round-body {
+  display: flex;
+  flex-direction: column;
   justify-content: space-around;
   gap: 10px;
-  min-width: 168px;
+  flex: 1;
+  position: relative;
 }
 .bracket.centered .center-col {
   min-width: 190px;
@@ -453,6 +459,12 @@ table.standings tr:last-child td { border-bottom: none; }
   align-items: center;
   gap: 6px;
   padding: 2px 0;
+  text-align: left;
+}
+.koMatch .row > span:first-child {
+  justify-self: start;
+  text-align: left;
+  min-width: 0;
 }
 .koMatch .row.winner { font-weight: 600; }
 .koMatch .row.loser { opacity: 0.45; font-weight: 400; }
@@ -465,6 +477,39 @@ table.standings tr:last-child td { border-bottom: none; }
   border-radius: 3px;
   font-size: 12px;
   font-family: inherit;
+}
+
+/* Bracket connector lines: horizontal stubs + vertical joiner between paired
+   matches. Only in the inline (non-centered) bracket — column gap is 18px so
+   stubs are 9px on each side. */
+.bracket:not(.centered) .round-body .koMatch { position: relative; }
+.bracket:not(.centered) .round-body:not(.round-final) .koMatch::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 9px;
+  border-top: 1px solid var(--line);
+  pointer-events: none;
+}
+.bracket:not(.centered) .round-body:not(.round-r32) .koMatch::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 9px;
+  border-top: 1px solid var(--line);
+  pointer-events: none;
+}
+.bracket:not(.centered) .round-body:not(.round-final) .koMatch:nth-child(odd)::after {
+  border-right: 1px solid var(--line);
+  height: calc(50% + 5px);
+}
+.bracket:not(.centered) .round-body:not(.round-final) .koMatch:nth-child(even)::after {
+  border-right: 1px solid var(--line);
+  top: auto;
+  bottom: 50%;
+  height: calc(50% + 5px);
 }
 
 .muted { color: var(--muted); }

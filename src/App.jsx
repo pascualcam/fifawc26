@@ -216,7 +216,7 @@ function KoMatch({ round, idx, homeId, awayId, homeLabel, awayLabel, ko, setKo, 
         </div>
       )}
       {!showMeta && meta && (
-        <div className="matchmeta" style={{ marginBottom: 4, justifyContent: 'center' }}>
+        <div className="matchmeta" style={{ marginBottom: 4 }}>
           <span>{meta.match ? <><span className="muted small">M{meta.match}</span> · </> : null}{fmtDate(meta.date)}</span>
         </div>
       )}
@@ -336,24 +336,26 @@ function BracketView({ results, ko, setKo, allowQuickPick = false, blurb }) {
         <div className="bracket">
           <div className="round">
             <h4>Round of 32</h4>
-            {b.r32Pairs.map((p, i) => km('r32', i, p))}
+            <div className="round-body round-r32">{b.r32Pairs.map((p, i) => km('r32', i, p))}</div>
           </div>
           <div className="round">
             <h4>Round of 16</h4>
-            {b.r16Pairs.map((p, i) => km('r16', i, p))}
+            <div className="round-body round-r16">{b.r16Pairs.map((p, i) => km('r16', i, p))}</div>
           </div>
           <div className="round">
             <h4>Quarterfinals</h4>
-            {b.qfPairs.map((p, i) => km('qf', i, p))}
+            <div className="round-body round-qf">{b.qfPairs.map((p, i) => km('qf', i, p))}</div>
           </div>
           <div className="round">
             <h4>Semifinals</h4>
-            {b.sfPairs.map((p, i) => km('sf', i, p))}
+            <div className="round-body round-sf">{b.sfPairs.map((p, i) => km('sf', i, p))}</div>
           </div>
           <div className="round">
             <h4>Final</h4>
-            {km('final', 0, b.finalPair)}
-            {ChampCard}
+            <div className="round-body round-final">
+              {km('final', 0, b.finalPair)}
+              {ChampCard}
+            </div>
           </div>
         </div>
       </div>
@@ -369,40 +371,42 @@ function BracketView({ results, ko, setKo, allowQuickPick = false, blurb }) {
               <div className="bracket centered">
                 <div className="round">
                   <h4>Round of 32</h4>
-                  {b.r32Pairs.slice(0, 8).map((p, i) => km('r32', i, p))}
+                  <div className="round-body">{b.r32Pairs.slice(0, 8).map((p, i) => km('r32', i, p))}</div>
                 </div>
                 <div className="round">
                   <h4>Round of 16</h4>
-                  {b.r16Pairs.slice(0, 4).map((p, i) => km('r16', i, p))}
+                  <div className="round-body">{b.r16Pairs.slice(0, 4).map((p, i) => km('r16', i, p))}</div>
                 </div>
                 <div className="round">
                   <h4>Quarterfinals</h4>
-                  {b.qfPairs.slice(0, 2).map((p, i) => km('qf', i, p))}
+                  <div className="round-body">{b.qfPairs.slice(0, 2).map((p, i) => km('qf', i, p))}</div>
                 </div>
                 <div className="round">
                   <h4>Semifinal</h4>
-                  {km('sf', 0, b.sfPairs[0])}
+                  <div className="round-body">{km('sf', 0, b.sfPairs[0])}</div>
                 </div>
                 <div className="round center-col">
                   <h4 style={{ textAlign: 'center' }}>Final</h4>
-                  {km('final', 0, b.finalPair)}
-                  {ChampCard}
+                  <div className="round-body">
+                    {km('final', 0, b.finalPair)}
+                    {ChampCard}
+                  </div>
                 </div>
                 <div className="round">
                   <h4>Semifinal</h4>
-                  {km('sf', 1, b.sfPairs[1])}
+                  <div className="round-body">{km('sf', 1, b.sfPairs[1])}</div>
                 </div>
                 <div className="round">
                   <h4>Quarterfinals</h4>
-                  {b.qfPairs.slice(2, 4).map((p, i) => km('qf', i + 2, p))}
+                  <div className="round-body">{b.qfPairs.slice(2, 4).map((p, i) => km('qf', i + 2, p))}</div>
                 </div>
                 <div className="round">
                   <h4>Round of 16</h4>
-                  {b.r16Pairs.slice(4, 8).map((p, i) => km('r16', i + 4, p))}
+                  <div className="round-body">{b.r16Pairs.slice(4, 8).map((p, i) => km('r16', i + 4, p))}</div>
                 </div>
                 <div className="round">
                   <h4>Round of 32</h4>
-                  {b.r32Pairs.slice(8, 16).map((p, i) => km('r32', i + 8, p))}
+                  <div className="round-body">{b.r32Pairs.slice(8, 16).map((p, i) => km('r32', i + 8, p))}</div>
                 </div>
               </div>
             </div>
