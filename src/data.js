@@ -277,6 +277,7 @@ export function koSlotLabel(round, idx, side) {
     : round === 'qf' ? QF_SPEC[idx]
     : round === 'sf' ? SF_SPEC[idx]
     : round === 'final' ? FINAL_SPEC
+    : round === 'bronze' ? THIRD_PLACE_SPEC
     : null
   if (!spec) return ''
   const n = spec.feeds[side]
@@ -285,11 +286,12 @@ export function koSlotLabel(round, idx, side) {
 
 // Legacy alias preserved for components still indexing 0..15 / 0..7 etc.
 export const KO_SCHEDULE = {
-  r32:   R32_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
-  r16:   R16_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
-  qf:    QF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
-  sf:    SF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
-  final: [{ date: FINAL_SPEC.date, city: FINAL_SPEC.city, match: FINAL_SPEC.match }]
+  r32:    R32_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
+  r16:    R16_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
+  qf:     QF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
+  sf:     SF_SPEC.map(s  => ({ date: s.date, city: s.city, match: s.match })),
+  final:  [{ date: FINAL_SPEC.date, city: FINAL_SPEC.city, match: FINAL_SPEC.match }],
+  bronze: [{ date: THIRD_PLACE_SPEC.date, city: THIRD_PLACE_SPEC.city, match: THIRD_PLACE_SPEC.match }]
 }
 
 // Build a flat M1..M104 sequential list. Knockout entries have symbolic home/away

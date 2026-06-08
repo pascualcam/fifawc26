@@ -119,6 +119,7 @@ function ScheduleView({ results, ko }) {
     else if (n >= 89 && n <= 96) { round = 'r16'; idx = n - 89 }
     else if (n >= 97 && n <= 100) { round = 'qf'; idx = n - 97 }
     else if (n >= 101 && n <= 102) { round = 'sf'; idx = n - 101 }
+    else if (n === 103) { round = 'bronze'; idx = 0 }
     else if (n === 104) { round = 'final'; idx = 0 }
     else return ''
     const r = ko[`${round}-${idx}`]
@@ -355,6 +356,11 @@ function BracketView({ results, ko, setKo, allowQuickPick = false, blurb }) {
             <div className="round-body round-final">
               {km('final', 0, b.finalPair)}
               {ChampCard}
+              <div className="bronze-sep">3rd-place</div>
+              {km('bronze', 0, b.bronzePair)}
+              {b.bronze && (
+                <div className="bronze-chip"><span className="muted small">🥉</span> <TeamLabel id={b.bronze} /></div>
+              )}
             </div>
           </div>
         </div>
@@ -390,6 +396,11 @@ function BracketView({ results, ko, setKo, allowQuickPick = false, blurb }) {
                   <div className="round-body">
                     {km('final', 0, b.finalPair)}
                     {ChampCard}
+                    <div className="bronze-sep">3rd-place</div>
+                    {km('bronze', 0, b.bronzePair)}
+                    {b.bronze && (
+                      <div className="bronze-chip"><span className="muted small">🥉</span> <TeamLabel id={b.bronze} /></div>
+                    )}
                   </div>
                 </div>
                 <div className="round">
@@ -704,7 +715,7 @@ export default function App() {
       <header className="top">
         <h1>FIFA World Cup 2026</h1>
         <span className="sub" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span>🇺🇸 🇨🇦 🇲🇽 · 48 teams</span>
+          <span>🇺🇸 🇨🇦 🇲🇽</span>
           <span>·</span>
           <span>{auth.name}</span>
           <button onClick={signOut}

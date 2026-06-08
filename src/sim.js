@@ -1,6 +1,6 @@
 import {
   TEAMS, GROUPS, GROUP_KEYS, groupMatches,
-  R32_SPEC, R16_SPEC, QF_SPEC, SF_SPEC, FINAL_SPEC
+  R32_SPEC, R16_SPEC, QF_SPEC, SF_SPEC, FINAL_SPEC, THIRD_PLACE_SPEC
 } from './data.js'
 import { THIRD_PLACE_MATRIX } from './thirdMatrix.js'
 
@@ -244,8 +244,15 @@ export function computeBracket(results, koResults) {
   const qfWinners = qfPairs.map(([h, a], i) => winnerOf('qf', i, h, a))
   const sfPairs = SF_SPEC.map(spec => [qfWinners[spec.feeds[0] - 97], qfWinners[spec.feeds[1] - 97]])
   const sfWinners = sfPairs.map(([h, a], i) => winnerOf('sf', i, h, a))
+  const sfLosers = sfPairs.map(([h, a], i) => {
+    const w = sfWinners[i]
+    if (!h || !a || !w) return null
+    return w === h ? a : h
+  })
   const finalPair = [sfWinners[0], sfWinners[1]]
   const champ = winnerOf('final', 0, finalPair[0], finalPair[1])
+  const bronzePair = [sfLosers[0], sfLosers[1]]
+  const bronze = winnerOf('bronze', 0, bronzePair[0], bronzePair[1])
   const advancing = advancingTeams(standings)
-  return { r32Pairs, r16Pairs, qfPairs, sfPairs, finalPair, champ, advancing, standings }
+  return { r32Pairs, r16Pairs, qfPairs, sfPairs, finalPair, champ, bronzePair, bronze, advancing, standings }
 }
