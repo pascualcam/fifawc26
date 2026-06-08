@@ -69,14 +69,32 @@ function bestThirds(standings) {
   return thirds.slice(0, 8)
 }
 
+// Is a group's full slate of 6 matches scored? Used to gate KO resolution
+// so the bracket view doesn't display Elo-tiebreaker placeholders before any
+// actual results are entered.
+function groupComplete(groupKey, results) {
+  const ms = groupMatches(groupKey)
+  for (let i = 0; i < ms.length; i++) {
+    const r = results[`${groupKey}-${i}`]
+    if (!r || r.home == null || r.away == null) return false
+  }
+  return true
+}
+
 // Resolve R32_SPEC into 16 concrete [homeTeamId, awayTeamId] pairs.
-// Uses standings + Annex C third-place matrix.
-export function resolveR32Pairs(standings) {
-  const thirds = bestThirds(standings)
+// Uses standings + Annex C third-place matrix. Requires results to know which
+// groups are fully decided.
+export function resolveR32Pairs(standings, results = {}) {
+  const isDone = {}
+  GROUP_KEYS.forEach(g => { isDone[g] = groupComplete(g, results) })
+  const allDone = GROUP_KEYS.every(g => isDone[g])
+  const thirds = allDone ? bestThirds(standings) : []
   if (thirds.length < 8) {
-    // Pre-tournament / incomplete: best-effort partial fill, no third-place mapping.
+    // Pre-tournament / incomplete: only fill winner/runnerup for groups that are
+    // actually decided. Third-place slots stay null until all 12 groups complete.
     return R32_SPEC.map(spec => {
       const teamFor = ref => {
+        if (!isDone[ref.group] && (ref.kind === 'winner' || ref.kind === 'runnerup')) return null
         if (ref.kind === 'winner') return standings[ref.group]?.[0]?.team
         if (ref.kind === 'runnerup') return standings[ref.group]?.[1]?.team
         return null // third unresolved
@@ -136,7 +154,7 @@ function simOnce(results) {
     })
   })
   const standings = allGroupStandings(simResults)
-  const r32Pairs = resolveR32Pairs(standings)
+  const r32Pairs = resolveR32Pairs(standings, simResults)
   const reached = {}
   r32Pairs.forEach(([h, a]) => {
     if (h) reached[h] = reached[h] || { r32: 1, r16: 0, qf: 0, sf: 0, final: 0, champ: 0 }
@@ -207,7 +225,7 @@ export function runMonteCarlo(results, N = 2000) {
 // Compute deterministic bracket from user-entered scores (used for Bracket view).
 export function computeBracket(results, koResults) {
   const standings = allGroupStandings(results)
-  const r32Pairs = resolveR32Pairs(standings)
+  const r32Pairs = resolveR32Pairs(standings, results)
   const winnerOf = (round, idx, expHome, expAway) => {
     if (!expHome || !expAway) return null
     const r = koResults[`${round}-${idx}`]

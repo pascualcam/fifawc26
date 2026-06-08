@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { TEAMS, GROUPS, GROUP_KEYS, groupMatches, groupSchedule, VENUES, KO_SCHEDULE, allMatchesSequential } from './data.js'
+import { TEAMS, GROUPS, GROUP_KEYS, groupMatches, groupSchedule, VENUES, KO_SCHEDULE, allMatchesSequential, koSlotLabel } from './data.js'
 import { allGroupStandings, advancingTeams, computeBracket, runMonteCarlo } from './sim.js'
 import { EMPTY_STATE, loadAuth, saveAuth, fetchState, putState, verifyAuth } from './store.js'
 
@@ -10,8 +10,8 @@ function fmtDate(iso) {
   return DATE_FMT.format(new Date(y, m - 1, d))
 }
 
-function TeamLabel({ id, mute, hideName }) {
-  if (!id) return <span className="muted small">— TBD —</span>
+function TeamLabel({ id, mute, hideName, fallback }) {
+  if (!id) return <span className="muted small">{fallback || '— TBD —'}</span>
   const t = TEAMS[id]
   return (
     <span style={{ opacity: mute ? 0.6 : 1 }} title={t.name}>
@@ -172,7 +172,7 @@ function ScheduleView({ results, ko }) {
   )
 }
 
-function KoMatch({ round, idx, homeId, awayId, ko, setKo, allowQuickPick, density = 'full' }) {
+function KoMatch({ round, idx, homeId, awayId, homeLabel, awayLabel, ko, setKo, allowQuickPick, density = 'full' }) {
   const key = `${round}-${idx}`
   const stored = ko[key]
   // Stale guard: only use stored entry when its teams match current pair.
@@ -182,16 +182,25 @@ function KoMatch({ round, idx, homeId, awayId, ko, setKo, allowQuickPick, densit
     setKo({ ...ko, [key]: { ...r, homeId, awayId, [side]: v } })
   }
   const setPenWinner = id => setKo({ ...ko, [key]: { ...r, homeId, awayId, penWinner: id } })
-  const quickPick = id => {
-    if (id === homeId) setKo({ ...ko, [key]: { homeId, awayId, home: 1, away: 0 } })
-    else setKo({ ...ko, [key]: { homeId, awayId, home: 0, away: 1 } })
-  }
   const winnerSide = (() => {
     if (r.home == null || r.away == null) return null
     if (r.home > r.away) return 'h'
     if (r.away > r.home) return 'a'
     return r.penWinner === homeId ? 'h' : r.penWinner === awayId ? 'a' : null
   })()
+  const quickPick = id => {
+    const side = id === homeId ? 'h' : 'a'
+    // Toggle off: clicking ✓ on the currently-winning side clears the match
+    // entirely (scores + penWinner), reverting to unselected state.
+    if (winnerSide === side) {
+      const next = { ...ko }
+      delete next[key]
+      setKo(next)
+      return
+    }
+    if (id === homeId) setKo({ ...ko, [key]: { homeId, awayId, home: 1, away: 0 } })
+    else setKo({ ...ko, [key]: { homeId, awayId, home: 0, away: 1 } })
+  }
   const meta = KO_SCHEDULE[round]?.[idx]
   const homeCls = winnerSide === 'h' ? 'winner' : winnerSide === 'a' ? 'loser' : ''
   const awayCls = winnerSide === 'a' ? 'winner' : winnerSide === 'h' ? 'loser' : ''
@@ -217,7 +226,7 @@ function KoMatch({ round, idx, homeId, awayId, ko, setKo, allowQuickPick, densit
             <button className={`picktiny ${winnerSide === 'h' ? 'on' : ''}`}
               onClick={() => quickPick(homeId)} title="Pick winner">{winnerSide === 'h' ? '✓' : ''}</button>
           )}
-          <TeamLabel id={homeId} hideName={flagsOnly} />
+          <TeamLabel id={homeId} hideName={flagsOnly} fallback={homeLabel} />
         </span>
         <input type="number" min="0" disabled={!homeId} value={r.home ?? ''}
           onChange={e => setScore('home', e.target.value)} />
@@ -228,7 +237,7 @@ function KoMatch({ round, idx, homeId, awayId, ko, setKo, allowQuickPick, densit
             <button className={`picktiny ${winnerSide === 'a' ? 'on' : ''}`}
               onClick={() => quickPick(awayId)} title="Pick winner">{winnerSide === 'a' ? '✓' : ''}</button>
           )}
-          <TeamLabel id={awayId} hideName={flagsOnly} />
+          <TeamLabel id={awayId} hideName={flagsOnly} fallback={awayLabel} />
         </span>
         <input type="number" min="0" disabled={!awayId} value={r.away ?? ''}
           onChange={e => setScore('away', e.target.value)} />
@@ -301,6 +310,7 @@ function BracketView({ results, ko, setKo, allowQuickPick = false, blurb }) {
   }, [fullscreen])
   const km = (round, i, p) => (
     <KoMatch key={`${round}-${i}`} round={round} idx={i} homeId={p[0]} awayId={p[1]}
+      homeLabel={koSlotLabel(round, i, 0)} awayLabel={koSlotLabel(round, i, 1)}
       ko={ko} setKo={setKo} allowQuickPick={allowQuickPick} density={density} />
   )
   const ChampCard = b.champ ? (

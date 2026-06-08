@@ -259,6 +259,30 @@ export const THIRD_PLACE_SPEC =
 export const FINAL_SPEC =
   { match: 104, date: '2026-07-19', city: 'East Rutherford', feeds: [101, 102] }
 
+// Label for an unresolved KO slot (used as bracket placeholder before teams known).
+// side: 0 = home, 1 = away.
+export function koSlotLabel(round, idx, side) {
+  const refLabel = ref => {
+    if (ref.kind === 'winner') return `Winner Group ${ref.group}`
+    if (ref.kind === 'runnerup') return `Runner-up Group ${ref.group}`
+    if (ref.kind === 'third') return `Best 3rd from ${ref.from.join('/')}`
+    return ''
+  }
+  if (round === 'r32') {
+    const s = R32_SPEC[idx]
+    if (!s) return ''
+    return refLabel(side === 0 ? s.home : s.away)
+  }
+  const spec = round === 'r16' ? R16_SPEC[idx]
+    : round === 'qf' ? QF_SPEC[idx]
+    : round === 'sf' ? SF_SPEC[idx]
+    : round === 'final' ? FINAL_SPEC
+    : null
+  if (!spec) return ''
+  const n = spec.feeds[side]
+  return spec.loserBracket ? `Loser M${n}` : `Winner M${n}`
+}
+
 // Legacy alias preserved for components still indexing 0..15 / 0..7 etc.
 export const KO_SCHEDULE = {
   r32:   R32_SPEC.map(s => ({ date: s.date, city: s.city, match: s.match })),
