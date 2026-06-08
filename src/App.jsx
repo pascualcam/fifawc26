@@ -590,7 +590,7 @@ function Login({ onLogin }) {
     <div className="app" style={{ maxWidth: 380, marginTop: 80 }}>
       <header className="top" style={{ display: 'block', textAlign: 'center', borderBottom: 'none' }}>
         <h1 style={{ fontSize: 22 }}>FIFA World Cup 2026</h1>
-        <div className="sub" style={{ marginTop: 4 }}>🇺🇸 🇨🇦 🇲🇽 · Tracker</div>
+        <div className="sub" style={{ marginTop: 4 }}>🇺🇸 🇨🇦 🇲🇽 Tracker</div>
       </header>
       <form onSubmit={submit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
         <h3>Sign in</h3>
