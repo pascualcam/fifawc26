@@ -24,6 +24,21 @@ function TeamLabel({ id, mute, hideName, fallback }) {
 // mode='pick' shows W/D/L buttons + optional score inputs.
 function GroupsView({ results, setResults, mode = 'score' }) {
   const standings = useMemo(() => allGroupStandings(results), [results])
+  // 8 best-3rd qualifiers, only resolved when all 12 groups complete.
+  const qualifiedThirds = useMemo(() => {
+    const adv = advancingTeams(standings)
+    const set = new Set()
+    if (adv.length === 32) adv.slice(24).forEach(t => set.add(t.team))
+    return set
+  }, [standings])
+  // Collapsed groups (mobile UX). Default: all collapsed. CSS forces body
+  // visible on desktop regardless.
+  const [closed, setClosed] = useState(() => new Set(GROUP_KEYS))
+  const toggle = g => setClosed(prev => {
+    const next = new Set(prev)
+    if (next.has(g)) next.delete(g); else next.add(g)
+    return next
+  })
   const setScore = (key, side, val) => {
     const v = val === '' ? null : Math.max(0, parseInt(val, 10) || 0)
     const cur = results[key] || { home: null, away: null }
@@ -41,22 +56,34 @@ function GroupsView({ results, setResults, mode = 'score' }) {
       {GROUP_KEYS.map(g => {
         const sched = groupSchedule(g)
         const s = standings[g]
+        const isClosed = closed.has(g)
         return (
-          <div className="card" key={g}>
-            <h3>Group {g}</h3>
+          <div className={`card group-card ${isClosed ? 'closed' : ''}`} key={g}>
+            <button className="group-header" onClick={() => toggle(g)} aria-expanded={!isClosed}>
+              <h3>Group {g}</h3>
+              <div className="group-flags">
+                {GROUPS[g].map(t => <span key={t} className="flag">{TEAMS[t].flag}</span>)}
+              </div>
+              <span className="group-chevron">{isClosed ? '▸' : '▾'}</span>
+            </button>
+            <div className="group-body">
             <table className="standings">
               <thead>
                 <tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr>
               </thead>
               <tbody>
-                {s.map((row, i) => (
-                  <tr key={row.team} className={i < 2 ? 'qual' : i === 2 ? 'qual-third' : ''}>
+                {s.map((row, i) => {
+                  const cls = i < 2 ? 'qual'
+                    : (i === 2 && qualifiedThirds.has(row.team)) ? 'qual-third'
+                    : ''
+                  return (
+                  <tr key={row.team} className={cls}>
                     <td><TeamLabel id={row.team} /></td>
                     <td>{row.P}</td><td>{row.W}</td><td>{row.D}</td><td>{row.L}</td>
                     <td>{row.GD > 0 ? `+${row.GD}` : row.GD}</td>
                     <td><b>{row.Pts}</b></td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
             <div style={{ marginTop: 12 }}>
@@ -93,6 +120,7 @@ function GroupsView({ results, setResults, mode = 'score' }) {
                   </div>
                 )
               })}
+            </div>
             </div>
           </div>
         )

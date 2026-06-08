@@ -603,6 +603,28 @@ table.standings tr:last-child td { border-bottom: none; }
   justify-content: space-between;
 }
 
+/* Collapsible group card. Header always rendered; on desktop it looks like a
+   plain h3 (no chevron, no flag row, no hover). Body always visible on desktop
+   regardless of `closed` state — collapse only takes effect at mobile width. */
+.group-card { padding: 0; overflow: hidden; }
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px;
+  cursor: default;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+.group-header h3 { margin: 0; flex: 0 0 auto; }
+.group-flags { display: none; flex: 1; gap: 4px; flex-wrap: wrap; }
+.group-chevron { display: none; color: var(--muted); font-size: 12px; }
+.group-body { padding: 0 14px 14px; }
+
 /* ---------- Mobile (<=640px) ---------- */
 @media (max-width: 640px) {
   .app { padding: 12px 10px 60px; }
@@ -655,14 +677,48 @@ table.standings tr:last-child td { border-bottom: none; }
   .pickbtn { padding: 6px 10px; font-size: 13px; }
   .picktiny { width: 18px; height: 18px; font-size: 12px; }
 
-  /* Bracket stays scrollable but cards a touch tighter. */
-  .bracket {
-    grid-auto-columns: minmax(150px, 1fr);
-    gap: 4px 12px;
-    padding: 4px 2px 12px;
-    -webkit-overflow-scrolling: touch;
+  /* Mobile vertical bracket: stack rounds top-to-bottom. Override grid layout
+     used on desktop for header alignment. */
+  .bracket:not(.centered) {
+    display: flex;
+    flex-direction: column;
+    grid-template-rows: none;
+    overflow-x: visible;
+    gap: 18px;
+    padding: 4px 0 14px;
   }
-  .koMatch { padding: 6px; font-size: 11.5px; }
+  .bracket:not(.centered) .round {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .bracket:not(.centered) .round h4 {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 4px 0;
+    z-index: 1;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .bracket:not(.centered) .round-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: none;
+    justify-content: flex-start;
+  }
+  .koMatch { padding: 6px 8px; font-size: 12px; }
+
+  /* Group card: header becomes a tappable bar with flag preview + chevron;
+     body hides when collapsed. */
+  .group-header { cursor: pointer; padding: 12px; gap: 8px; }
+  .group-header:active { background: var(--hl); }
+  .group-flags { display: flex; font-size: 14px; }
+  .group-chevron { display: inline-block; font-size: 14px; flex: 0 0 auto; }
+  .group-body { padding: 0 12px 12px; }
+  .group-card.closed .group-body { display: none; }
+  .group-card.closed .group-header { padding-bottom: 12px; }
 
   /* Fullscreen bracket modal: drop padding so usable on phone. */
   .bracket-modal { padding: 6px; }
