@@ -602,3 +602,88 @@ table.standings tr:last-child td { border-bottom: none; }
   align-items: center;
   justify-content: space-between;
 }
+
+/* ---------- Mobile (<=640px) ---------- */
+@media (max-width: 640px) {
+  .app { padding: 12px 10px 60px; }
+
+  header.top {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  header.top h1 { font-size: 16px; }
+  header.top .sub { font-size: 11px; flex-wrap: wrap; }
+
+  nav.tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav.tabs button { white-space: nowrap; padding: 8px 10px; font-size: 13px; }
+  nav.tabs.sub { padding-left: 0; }
+
+  .tab-bar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .tab-bar-left { flex-basis: 100%; }
+  .save-btn { padding: 8px 14px; font-size: 13px; min-height: 36px; }
+
+  .actions { flex-wrap: wrap; gap: 6px; }
+  .actions button { padding: 8px 12px; font-size: 13px; min-height: 36px; }
+
+  .grid { grid-template-columns: 1fr; gap: 12px; }
+
+  .card { padding: 12px; }
+
+  /* iOS zooms inputs <16px on focus. Bump to 16px everywhere. */
+  input, select, textarea, button { font-size: 16px; }
+
+  /* Group-stage match score inputs: widen column so 2 inputs fit at 16px. */
+  .match { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
+  .match input[type="number"] { width: 38px; padding: 6px 2px; font-size: 16px; }
+
+  /* KO inputs stay compact; bump just font-size. */
+  .koMatch input { width: 34px; padding: 4px 2px; font-size: 16px; }
+  .koMatch .row { grid-template-columns: 1fr 38px; }
+
+  /* Standings table: tighter cells, bigger touch zone. */
+  table.standings th, table.standings td { padding: 6px 5px; font-size: 13px; }
+  table.standings th { font-size: 10px; }
+
+  /* Pick buttons (predictions) bigger to tap. */
+  .pickbtn { padding: 6px 10px; font-size: 13px; }
+  .picktiny { width: 18px; height: 18px; font-size: 12px; }
+
+  /* Bracket stays scrollable but cards a touch tighter. */
+  .bracket {
+    grid-auto-columns: minmax(150px, 1fr);
+    gap: 4px 12px;
+    padding: 4px 2px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .koMatch { padding: 6px; font-size: 11.5px; }
+
+  /* Fullscreen bracket modal: drop padding so usable on phone. */
+  .bracket-modal { padding: 6px; }
+  .bracket-modal-header { padding: 10px 12px; }
+  .bracket-modal-header h2 { font-size: 13px; }
+  .bracket-modal-body { padding: 10px; }
+
+  /* Dropdown menu spans available width on small screens. */
+  .dd-menu { min-width: 180px; max-width: calc(100vw - 24px); right: 0; left: auto; }
+  .dd-trigger { font-size: 13px; padding: 8px 10px; min-height: 36px; }
+  .icon-btn { width: 36px; height: 36px; font-size: 18px; }
+
+  /* Probabilities table: shrink cells. */
+  .prob-table th, .prob-table td { padding: 6px 5px; font-size: 12px; }
+  .bar { height: 5px; }
+}
+
+/* Very narrow phones (<=380px): trim further. */
+@media (max-width: 380px) {
+  header.top h1 { font-size: 15px; }
+  .match { grid-template-columns: 1fr 90px 1fr; }
+  .match input[type="number"] { width: 34px; }
+  .koMatch .flag { width: 16px; font-size: 13px; }
+}
