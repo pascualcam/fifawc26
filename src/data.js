@@ -263,9 +263,9 @@ export const FINAL_SPEC =
 // side: 0 = home, 1 = away.
 export function koSlotLabel(round, idx, side) {
   const refLabel = ref => {
-    if (ref.kind === 'winner') return `Winner Group ${ref.group}`
-    if (ref.kind === 'runnerup') return `Runner-up Group ${ref.group}`
-    if (ref.kind === 'third') return `Best 3rd from ${ref.from.join('/')}`
+    if (ref.kind === 'winner') return `1${ref.group}`
+    if (ref.kind === 'runnerup') return `2${ref.group}`
+    if (ref.kind === 'third') return `3rd ${ref.from.join('/')}`
     return ''
   }
   if (round === 'r32') {
