@@ -536,7 +536,8 @@ function Expectations({ state, setState, saveStatus, doSave }) {
       <div className="actions">
         <button className={sub === 'groups' ? 'primary' : ''} onClick={() => setSub('groups')}>Group picks ({groupDone}/72)</button>
         <button className={sub === 'bracket' ? 'primary' : ''} onClick={() => setSub('bracket')}>My bracket{b.champ ? ` · 🏆 ${TEAMS[b.champ].flag}` : ''}</button>
-        <button onClick={() => { if (confirm('Clear all expectations?')) setState({ ...state, expect: { results: {}, ko: {} } }) }}>Clear expectations</button>
+        <button onClick={() => { if (confirm('Clear group-stage predictions?')) setState({ ...state, expect: { ...state.expect, results: {} } }) }}>Clear group picks</button>
+        <button onClick={() => { if (confirm('Clear bracket predictions?')) setState({ ...state, expect: { ...state.expect, ko: {} } }) }}>Clear bracket picks</button>
       </div>
       {sub === 'groups' && (
         <GroupsView results={state.expect.results} setResults={setExpectResults} mode="pick" />
